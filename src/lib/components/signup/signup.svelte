@@ -3,8 +3,11 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
+  import Navbar from "$lib/components/navbar/navbar.svelte";
   const id = $props.id();
 </script>
+
+<Navbar />
 
 <Card.Root class="mx-auto w-full max-w-sm">
   <Card.Header>

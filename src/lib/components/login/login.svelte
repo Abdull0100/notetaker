@@ -4,8 +4,11 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
+  import Navbar from "$lib/components/navbar/navbar.svelte";
   const id = $props.id();
 </script>
+
+<Navbar />
 
 <!-- This wrapper div must be the one that occupies the full viewport space -->
 <div class="min-h-screen flex items-center justify-center bg-background p-4">

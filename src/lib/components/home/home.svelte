@@ -1,7 +1,10 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
+  import Navbar from "$lib/components/navbar/navbar.svelte";
 </script>
+
+<Navbar />
 
 <Card.Root class="mx-auto w-full max-w-sm">
   <Card.Header>

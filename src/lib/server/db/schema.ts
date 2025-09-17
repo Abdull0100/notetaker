@@ -7,7 +7,8 @@ export const users = pgTable('users', {
 	name: text('name'),
 	isActive: boolean('is_active').default(true),
 	createdAt: timestamp('created_at').defaultNow(),
-	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date())
+	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
+	emailVerified: timestamp('email_verified', {withTimezone: true})
 });
 
 //user auth providers table
@@ -20,6 +21,18 @@ export const userAuthProviders = pgTable('user_auth_providers', {
 	passwordHash: text('password_hash'), // optional for email/password
 	createdAt: timestamp('created_at').defaultNow(),
 	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date())
+});
+
+//tracking user sessions
+//references users table as foreign key
+export const sessions = pgTable('sessions', {
+  sessionToken: text('sessionToken').primaryKey(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expires: timestamp('expires', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
 });
 
 //meetings table, references users table as foreign key

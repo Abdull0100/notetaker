@@ -5,6 +5,7 @@ import { users, userAuthProviders } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import type { Actions, PageServerLoad } from './$types';
+import { normalizeEmail, sanitizeName, sanitizePassword, isLikelyValidEmail, passwordMeetsBaselinePolicy } from '$lib/server/sanitize';
 
 export const load: PageServerLoad = async (event) => {
 	const session = await event.locals.auth();
@@ -16,16 +17,24 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions = {
 	default: async ({ request }) => {
-		const data = await request.formData();
-		const name = data.get('name') as string;
-		const email = data.get('email') as string;
-		const password = data.get('password') as string;
-		const confirmPassword = data.get('confirm-password') as string;
+    const data = await request.formData();
+    const name = sanitizeName(data.get('name') as string);
+    const email = normalizeEmail(data.get('email') as string);
+    const password = sanitizePassword(data.get('password') as string);
+    const confirmPassword = sanitizePassword(data.get('confirm-password') as string);
 
 		// --- Basic Validation ---
-		if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
 			return fail(400, { message: 'All fields are required.' });
 		}
+
+    if (!isLikelyValidEmail(email)) {
+      return fail(400, { message: 'Please provide a valid email address.' });
+    }
+
+    if (!passwordMeetsBaselinePolicy(password)) {
+      return fail(400, { message: 'Password must be at least 8 characters.' });
+    }
 
 		if (password !== confirmPassword) {
 			return fail(400, { message: 'Passwords do not match.' });
@@ -39,24 +48,24 @@ export const actions = {
 
 		// --- Hash Password and Create User ---
 		try {
-			const hashedPassword = await bcrypt.hash(password, 12);
+            const hashedPassword = await bcrypt.hash(password, 12);
 
 			// Use a transaction to ensure both tables are updated successfully
 			await db.transaction(async (tx) => {
 				const [newUser] = await tx
 					.insert(users)
-					.values({
-						email: email.toLowerCase(),
-						name
-					})
+                    .values({
+                        email,
+                        name
+                    })
 					.returning();
 
-				await tx.insert(userAuthProviders).values({
-					userId: newUser.id,
-					provider: 'credentials',
-					providerUserId: email.toLowerCase(), // For credentials, we can use the email as the unique provider ID
-					passwordHash: hashedPassword
-				});
+                await tx.insert(userAuthProviders).values({
+                    userId: newUser.id,
+                    provider: 'credentials',
+                    providerUserId: email, // For credentials, we can use the email as the unique provider ID
+                    passwordHash: hashedPassword
+                });
 			});
 		} catch (error) {
 			console.error('Signup Error:', error);

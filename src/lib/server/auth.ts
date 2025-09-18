@@ -6,14 +6,14 @@ import { db } from "./db";
 import { users, userAuthProviders } from "./db/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
+import { normalizeEmail, sanitizePassword } from './sanitize';
 
 import { AUTH_GOOGLE_ID,
   AUTH_SECRET,
   AUTH_GOOGLE_SECRET
  } from '$env/static/private'
 
-console.log("AUTH_GOOGLE_ID:", AUTH_GOOGLE_ID);
-console.log("AUTH_GOOGLE_SECRET length:", AUTH_GOOGLE_SECRET?.length);
+// Avoid logging secrets or their lengths in production
 
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
@@ -35,19 +35,21 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
       },
       async authorize(credentials) {
         const creds = credentials as {email?: string, password?: string}
-        if (!creds?.email || !creds?.password) return null;
+        const email = normalizeEmail(creds?.email);
+        const password = sanitizePassword(creds?.password);
+        if (!email || !password) return null;
         const [row] = await db
         .select()
         .from(userAuthProviders)
         .innerJoin(users, eq(users.id, userAuthProviders.userId))
-        .where(eq(users.email, creds.email.toLowerCase()));
+        .where(eq(users.email, email));
 
         if(!row || !row.user_auth_providers.passwordHash) return null;
         
         const hash = row.user_auth_providers.passwordHash;
         if (!hash || typeof hash !== 'string') return null;
         
-        const ok = await bcrypt.compare(creds.password, hash);
+        const ok = await bcrypt.compare(password, hash);
         if (!ok) return null;
 
         return row.users;

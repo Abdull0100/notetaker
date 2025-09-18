@@ -20,6 +20,22 @@ export function DrizzleAdapter(): import ('@auth/sveltekit/adapters').Adapter{
             return user ?? null;
         },
 
+        async getUserByAccount(account: { provider: string; providerAccountId: string }) {
+            const [row] = await db
+            .select({ user: users })
+            .from(userAuthProviders)
+            .innerJoin(users, eq(userAuthProviders.userId, users.id))
+            .where(
+                and(
+                    eq(userAuthProviders.provider, account.provider),
+                    eq(userAuthProviders.providerUserId, account.providerAccountId)
+                )
+            )
+            .limit(1);
+
+            return row ? row.user : null;
+        },
+
         async updateUser({id, ...data}) {
             const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
             return user;

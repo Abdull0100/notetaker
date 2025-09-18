@@ -3,7 +3,6 @@ import { signIn } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
-	// CORRECTED: Use event.locals.auth()
 	const session = await event.locals.auth();
 	if (session?.user) {
 		throw redirect(303, '/dashboard');
@@ -18,5 +17,5 @@ export const load: PageServerLoad = async (event) => {
 
 
 export const actions = {
-    default: signIn
+    login: signIn
 } satisfies Actions

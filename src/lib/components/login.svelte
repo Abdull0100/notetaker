@@ -23,10 +23,10 @@
     </Card.Header>
 
     <Card.Content>
-      <form class="grid gap-4" use:enhance method="POST" action="?/default">
+      <form class="grid gap-4" use:enhance method="POST" action="?/login">
         <div class="grid gap-2">
           <Label for="email">Email</Label>
-          <Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
+          <Input name="email" id="email" type="email" bind:value={email} placeholder="you@example.com" required />
         </div>
 
         <div class="grid gap-2">
@@ -36,7 +36,7 @@
               Forgot your password?
             </a>
           </div>
-          <Input id="password" type="password" bind:value={password} required />
+          <Input name="password" id="password" type="password" bind:value={password} required />
         </div>
 
         <Button type="submit" class="w-full">Login</Button>

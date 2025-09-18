@@ -1,60 +1,61 @@
-// /src/lib/server/db/seed.ts
-
-// The db instance will be passed in by drizzle-seed
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '$lib/server/db/schema';
+import 'dotenv/config'; // load .env into process.env
+import { db } from './index';
+import { users, userAuthProviders } from './schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
-const ADMIN_EMAIL = 'admin@example.com';
-const ADMIN_PASSWORD = 'random123';
+async function main() {
+  console.log('Starting database seed...');
+  console.log('Database URL:', process.env.DATABASE_URL); // sanity check
 
-// The script must export a default async function
-export default async function seed(db: NodePgDatabase<typeof schema>) {
-	console.log('🌱 Seeding database with drizzle-seed...');
+  const email = 'admin@example.com';
+  const plainPassword = 'random123';
 
-	// Check if the admin user already exists
-	const [existingAdmin] = await db
-		.select()
-		.from(schema.users)
-		.where(eq(schema.users.email, ADMIN_EMAIL));
+  // Check if user already exists
+  const existingUser = await db.select().from(users).where(eq(users.email, email));
+  let userId: string;
 
-	if (existingAdmin) {
-		console.log(`✅ Admin user with email "${ADMIN_EMAIL}" already exists. Skipping.`);
-		return;
-	}
+  if (existingUser.length > 0) {
+    console.log(`User ${email} already exists, skipping user insert.`);
+    userId = existingUser[0].id;
+  } else {
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        email,
+        name: 'Admin',
+        isActive: true,
+      })
+      .returning();
+    userId = newUser.id;
+    console.log(`Created user ${email} with id ${userId}`);
+  }
 
-	// If admin doesn't exist, create them
-	console.log(`Creating admin user: ${ADMIN_EMAIL}`);
+  // Check if auth provider already exists for this user
+  const existingAuth = await db
+    .select()
+    .from(userAuthProviders)
+    .where(eq(userAuthProviders.userId, userId));
 
-	const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  if (existingAuth.length > 0) {
+    console.log(`Auth provider for ${email} already exists, skipping provider insert.`);
+  } else {
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
+    await db.insert(userAuthProviders).values({
+      userId,
+      provider: 'email',
+      providerUserId: email,
+      passwordHash,
+    });
+    console.log(`Created auth provider (email/password) for ${email}`);
+  }
 
-	try {
-		await db.transaction(async (tx) => {
-			const [newUser] = await tx
-				.insert(schema.users)
-				.values({
-					email: ADMIN_EMAIL,
-					name: 'Admin',
-					emailVerified: new Date()
-				})
-				.returning();
-
-			console.log(`   -> Created user with ID: ${newUser.id}`);
-
-			await tx.insert(schema.userAuthProviders).values({
-				userId: newUser.id,
-				provider: 'credentials',
-				providerUserId: ADMIN_EMAIL,
-				passwordHash: hashedPassword
-			});
-
-			console.log(`   -> Created credentials provider for user.`);
-		});
-
-		console.log('🌳 Database seeded successfully!');
-	} catch (error) {
-		console.error('❌ An error occurred during seeding:', error);
-		process.exit(1);
-	}
+  console.log('Seed complete!');
 }
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Seeding failed:', err);
+    process.exit(1);
+  });

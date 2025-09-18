@@ -46,7 +46,9 @@ export const auth = betterAuth({
 	},
 	// Advanced configuration
 	advanced: {
-		generateId: () => crypto.randomUUID(),
+		database: {
+			generateId: () => crypto.randomUUID(),
+		},
 		crossSubDomainCookies: {
 			enabled: false,
 		},

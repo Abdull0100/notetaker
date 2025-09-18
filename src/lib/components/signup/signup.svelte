@@ -32,7 +32,7 @@
         <Label for="confirm-password-{id}">Confirm Password</Label>
         <Input id="confirm-password-{id}" type="password" required />
       </div>
-      <Button type="submit" class="w-full">Create Account</Button>
+      <Button type="submit" class="w-full" onclick={() => window.location.href = '/verification'}>Create Account</Button>
       <Button variant="outline" class="w-full">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
           <path

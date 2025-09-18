@@ -26,7 +26,7 @@
         <div class="grid gap-2">
           <div class="flex items-center">
             <Label for="password-{id}">Password</Label>
-            <a href="##" class="ml-auto inline-block text-sm text-primary hover:underline">
+            <a href="/forgot-password" class="ml-auto inline-block text-sm text-primary hover:underline">
               Forgot your password?
             </a>
           </div>

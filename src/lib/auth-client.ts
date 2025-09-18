@@ -2,14 +2,19 @@ import { createAuthClient } from "better-auth/svelte";
 
 // Create the auth client - should match server baseURL
 export const authClient = createAuthClient({
-	baseURL: "http://localhost:5173", // Update this for production
+	baseURL: process.env.NODE_ENV === 'production' 
+		? process.env.BETTER_AUTH_URL || "https://yourdomain.com"
+		: "http://localhost:5173"
 });
 
-// Helper functions for common auth operations
+// Export direct client functions for easier usage (latest pattern)
+export const { signIn, signOut, signUp, useSession } = authClient;
+
+// Helper functions for common auth operations (backward compatibility)
 export const authHelpers = {
 	// Sign in with email and password
 	async signInWithPassword(email: string, password: string) {
-		return await authClient.signIn.email({
+		return await signIn.email({
 			email,
 			password,
 		});
@@ -17,7 +22,7 @@ export const authHelpers = {
 
 	// Sign up with email and password
 	async signUpWithPassword(email: string, password: string, name: string = "") {
-		return await authClient.signUp.email({
+		return await signUp.email({
 			email,
 			password,
 			name,
@@ -26,14 +31,14 @@ export const authHelpers = {
 
 	// Sign in with Google
 	async signInWithGoogle() {
-		return await authClient.signIn.social({
+		return await signIn.social({
 			provider: "google",
 		});
 	},
 
 	// Sign out
 	async logout() {
-		return await authClient.signOut();
+		return await signOut();
 	},
 
 	// Get current session (client-side)

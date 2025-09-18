@@ -3,7 +3,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
-  import { authClient, authHelpers } from "$lib/auth-client";
+  import { authClient, authHelpers, signUp, signIn } from "$lib/auth-client";
   import { goto } from "$app/navigation";
 
   interface Props {
@@ -19,6 +19,7 @@
   let confirmPassword = $state("");
   let isLoading = $state(false);
   let errorMessage = $state("");
+  let showVerificationMessage = $state(false);
 
   async function handleEmailSignup(event: SubmitEvent) {
     event.preventDefault();
@@ -42,13 +43,18 @@
     errorMessage = "";
 
     try {
-      const result = await authHelpers.signUpWithPassword(email, password, name);
+      const result = await signUp.email({
+        email,
+        password,
+        name,
+      });
       
       if (result.error) {
         errorMessage = result.error.message || "Signup failed";
       } else {
-        // Success - redirect to dashboard or login
-        await goto("/dashboard");
+        // Success - show verification message
+        showVerificationMessage = true;
+        errorMessage = "";
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -63,7 +69,9 @@
     errorMessage = "";
 
     try {
-      const result = await authHelpers.signInWithGoogle();
+      const result = await signIn.social({
+        provider: "google",
+      });
       
       if (result.error) {
         errorMessage = result.error.message || "Google signup failed";
@@ -89,7 +97,13 @@
   <Card.Content>
     <form onsubmit={handleEmailSignup}>
       <div class="grid gap-4">
-        {#if errorMessage}
+        {#if showVerificationMessage}
+          <div class="text-sm text-green-600 bg-green-50 p-3 rounded border border-green-200">
+            <h4 class="font-medium">Account Created Successfully!</h4>
+            <p class="mt-1">We've sent a verification email to <strong>{email}</strong>. Please check your inbox and click the verification link to activate your account.</p>
+            <p class="mt-2 text-xs">Didn't receive the email? Check your spam folder or try signing up again.</p>
+          </div>
+        {:else if errorMessage}
           <div class="text-sm text-destructive bg-destructive/10 p-2 rounded">
             {errorMessage}
           </div>

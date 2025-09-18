@@ -1,6 +1,15 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Card from "$lib/components/ui/card/index.js";
+  import { goto } from "$app/navigation";
+
+  function navigateToSignup() {
+    goto('/signup');
+  }
+
+  function navigateToLogin() {
+    goto('/login');
+  }
 </script>
 
 <Card.Root class="mx-auto w-full max-w-sm">
@@ -16,11 +25,11 @@
         </p>
       </div>
       <div class="grid gap-2">
-        <Button class="w-full" onclick={() => window.location.href = '/signup'}>
-          Get Started
+        <Button class="w-full" onclick={navigateToSignup}>
+          {#snippet children()}Get Started{/snippet}
         </Button>
-        <Button variant="outline" class="w-full" onclick={() => window.location.href = '/login'}>
-          Sign In
+        <Button variant="outline" class="w-full" onclick={navigateToLogin}>
+          {#snippet children()}Sign In{/snippet}
         </Button>
       </div>
     </div>

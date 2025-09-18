@@ -3,7 +3,7 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
-  import { authClient, authHelpers } from "$lib/auth-client";
+  import { authClient, authHelpers, signIn } from "$lib/auth-client";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
 
@@ -18,6 +18,7 @@
   let password = $state("");
   let isLoading = $state(false);
   let errorMessage = $state("");
+  let showResendOption = $state(false);
 
   async function handleEmailLogin(event: SubmitEvent) {
     event.preventDefault();
@@ -31,10 +32,20 @@
     errorMessage = "";
 
     try {
-      const result = await authHelpers.signInWithPassword(email, password);
+      const result = await signIn.email({
+        email,
+        password,
+      });
       
       if (result.error) {
-        errorMessage = result.error.message || "Login failed";
+        // Handle specific error cases
+        if (result.error.status === 403) {
+          errorMessage = "Please verify your email address before signing in. Check your inbox for the verification link.";
+          showResendOption = true;
+        } else {
+          errorMessage = result.error.message || "Login failed";
+          showResendOption = false;
+        }
       } else {
         // Success - redirect to dashboard or home
         await goto("/dashboard");
@@ -52,7 +63,9 @@
     errorMessage = "";
 
     try {
-      const result = await authHelpers.signInWithGoogle();
+      const result = await signIn.social({
+        provider: "google",
+      });
       
       if (result.error) {
         errorMessage = result.error.message || "Google login failed";
@@ -61,6 +74,28 @@
     } catch (error) {
       console.error("Google login error:", error);
       errorMessage = "Google login failed";
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function resendVerificationEmail() {
+    if (!email) {
+      errorMessage = "Please enter your email address first";
+      return;
+    }
+
+    isLoading = true;
+    try {
+      await authClient.sendVerificationEmail({
+        email: email,
+        callbackURL: "/dashboard", // Redirect to dashboard after verification
+      });
+      errorMessage = "Verification email sent! Please check your inbox.";
+      showResendOption = false;
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      errorMessage = "Failed to send verification email. Please try again.";
     } finally {
       isLoading = false;
     }
@@ -90,6 +125,25 @@
           <div class="text-sm text-destructive bg-destructive/10 p-2 rounded">
             {errorMessage}
           </div>
+          {#if showResendOption}
+            <div class="mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="w-full"
+                onclick={resendVerificationEmail}
+                disabled={isLoading}
+              >
+                {#snippet children()}
+                  {#if isLoading}
+                    <span class="animate-spin mr-2">⏳</span>
+                  {/if}
+                  Resend Verification Email
+                {/snippet}
+              </Button>
+            </div>
+          {/if}
         {/if}
 
         <div class="grid gap-2">

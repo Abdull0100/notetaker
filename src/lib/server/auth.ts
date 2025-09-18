@@ -12,13 +12,19 @@ import { AUTH_GOOGLE_ID,
   AUTH_GOOGLE_SECRET
  } from '$env/static/private'
 
+console.log("AUTH_GOOGLE_ID:", AUTH_GOOGLE_ID);
+console.log("AUTH_GOOGLE_SECRET length:", AUTH_GOOGLE_SECRET?.length);
+
+
 export const { handle, signIn, signOut } = SvelteKitAuth({
   adapter: DrizzleAdapter(),
   providers: [
     Google({
         clientId: AUTH_GOOGLE_ID,
-        clientSecret: AUTH_GOOGLE_SECRET
-
+        clientSecret: AUTH_GOOGLE_SECRET,
+        authorization: "https://accounts.google.com/o/oauth2/v2/auth",
+        token: "https://oauth2.googleapis.com/token",
+        userinfo: "https://openidconnect.googleapis.com/v1/userinfo"
     }),
 
     Credentials({

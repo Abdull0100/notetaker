@@ -1,9 +1,13 @@
 // src/routes/+layout.server.ts
-import type { LayoutServerLoad } from './$types';
+import { auth } from "$lib/server/auth";
 
-export const load: LayoutServerLoad = async (event) => {
-	const session = await event.locals.auth();
+/** @type {import('./$types').LayoutServerLoad} */
+export async function load({ request }) {
+	const session = await auth.api.getSession({
+		headers: request.headers
+	});
+	
 	return {
 		session
 	};
-};
+}

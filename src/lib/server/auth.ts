@@ -13,23 +13,49 @@ export const auth = betterAuth({
 			verification: schema.verification,
 		},
 	}),
+	// Enable social providers if environment variables are available
 	socialProviders: {
-		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID!,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-		},
+		...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && {
+			google: {
+				clientId: process.env.GOOGLE_CLIENT_ID,
+				clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			},
+		}),
 	},
+	// Email and password authentication
 	emailAndPassword: {
 		enabled: true,
-		requireEmailVerification: true,
+		requireEmailVerification: false, // Set to false for easier testing
+		minPasswordLength: 8,
+		maxPasswordLength: 128,
 	},
+	// Database session configuration (no JWT)
 	session: {
 		expiresIn: 60 * 60 * 24 * 7, // 7 days
-		updateAge: 60 * 60 * 24, // 1 day (how often to update the session)
+		updateAge: 60 * 60 * 24, // 1 day
+		cookieCache: {
+			enabled: true,
+			maxAge: 60 * 5, // 5 minutes
+		},
 	},
+	// Security settings
+	rateLimit: {
+		enabled: true,
+		window: 60 * 1000, // 1 minute
+		max: 100, // 100 requests per minute
+	},
+	// Advanced configuration
 	advanced: {
 		generateId: () => crypto.randomUUID(),
+		crossSubDomainCookies: {
+			enabled: false,
+		},
 	},
+	// Base URL for production
+	baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5173",
+	// Secret for signing cookies and tokens
+	secret: process.env.BETTER_AUTH_SECRET || "your-secret-key-change-in-production",
 });
 
+// Export types for TypeScript
 export type Session = typeof auth.$Infer.Session;

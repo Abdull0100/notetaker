@@ -3,18 +3,15 @@ import { DrizzleAdapter } from "./drizzle-adapter";
 import Google from "@auth/sveltekit/providers/google";
 import Credentials from "@auth/sveltekit/providers/credentials";
 import { db } from "./db";
-import { users, userAuthProviders } from "./db/schema";
+import { users, accounts } from "./db/schema";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { normalizeEmail, sanitizePassword } from './sanitize';
 
 import { AUTH_GOOGLE_ID,
   AUTH_SECRET,
   AUTH_GOOGLE_SECRET
  } from '$env/static/private'
-
-// Avoid logging secrets or their lengths in production
-
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
   adapter: DrizzleAdapter(),
@@ -34,24 +31,53 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
         password: {label: 'Password', type: 'password'}
       },
       async authorize(credentials) {
+        console.log('[AUTH DEBUG] authorize called with credentials:', { email: credentials?.email, hasPassword: !!credentials?.password });
+        
         const creds = credentials as {email?: string, password?: string}
         const email = normalizeEmail(creds?.email);
         const password = sanitizePassword(creds?.password);
-        if (!email || !password) return null;
+        
+        console.log('[AUTH DEBUG] normalized credentials:', { email, hasPassword: !!password });
+        
+        if (!email || !password) {
+          console.log('[AUTH DEBUG] Missing email or password');
+          return null;
+        }
+        
+        console.log('[AUTH DEBUG] Querying database for user:', email);
         const [row] = await db
         .select()
-        .from(userAuthProviders)
-        .innerJoin(users, eq(users.id, userAuthProviders.userId))
-        .where(eq(users.email, email));
+        .from(accounts)
+        .innerJoin(users, eq(users.id, accounts.userId))
+        .where(and(eq(users.email, email), eq(accounts.provider, 'credentials')));
 
-        if(!row || !row.user_auth_providers.passwordHash) return null;
+        console.log('[AUTH DEBUG] Database query result:', { 
+          found: !!row, 
+          hasPasswordHash: !!row?.accounts?.password_hash,
+          userId: row?.users?.id 
+        });
+
+        if(!row || !row.accounts.password_hash) {
+          console.log('[AUTH DEBUG] No user found or no password hash');
+          return null;
+        }
         
-        const hash = row.user_auth_providers.passwordHash;
-        if (!hash || typeof hash !== 'string') return null;
+        const hash = row.accounts.password_hash;
+        if (!hash || typeof hash !== 'string') {
+          console.log('[AUTH DEBUG] Invalid password hash');
+          return null;
+        }
         
+        console.log('[AUTH DEBUG] Comparing passwords...');
         const ok = await bcrypt.compare(password, hash);
-        if (!ok) return null;
+        console.log('[AUTH DEBUG] Password comparison result:', ok);
+        
+        if (!ok) {
+          console.log('[AUTH DEBUG] Password mismatch');
+          return null;
+        }
 
+        console.log('[AUTH DEBUG] Authentication successful, returning user:', row.users.id);
         return row.users;
 
       }

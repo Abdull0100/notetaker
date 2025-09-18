@@ -1,7 +1,7 @@
 // src/routes/signup/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { users, userAuthProviders } from '$lib/server/db/schema';
+import { users, accounts } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import type { Actions, PageServerLoad } from './$types';
@@ -60,12 +60,14 @@ export const actions = {
                     })
 					.returning();
 
-                await tx.insert(userAuthProviders).values({
-                    userId: newUser.id,
-                    provider: 'credentials',
-                    providerUserId: email, // For credentials, we can use the email as the unique provider ID
-                    passwordHash: hashedPassword
-                });
+				// Create account record for Auth.js with password hash
+				await tx.insert(accounts).values({
+					userId: newUser.id,
+					type: 'credentials',
+					provider: 'credentials',
+					providerAccountId: email, // For credentials, we can use the email as the unique provider ID
+					password_hash: hashedPassword
+				});
 			});
 		} catch (error) {
 			console.error('Signup Error:', error);

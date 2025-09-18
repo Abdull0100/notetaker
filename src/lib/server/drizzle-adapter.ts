@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db';
-import { users, sessions, userAuthProviders } from '$lib/server/db/schema';
+import { users, sessions, accounts, verificationTokens } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export function DrizzleAdapter(): import ('@auth/sveltekit/adapters').Adapter{
@@ -23,12 +23,12 @@ export function DrizzleAdapter(): import ('@auth/sveltekit/adapters').Adapter{
         async getUserByAccount(account: { provider: string; providerAccountId: string }) {
             const [row] = await db
             .select({ user: users })
-            .from(userAuthProviders)
-            .innerJoin(users, eq(userAuthProviders.userId, users.id))
+            .from(accounts)
+            .innerJoin(users, eq(accounts.userId, users.id))
             .where(
                 and(
-                    eq(userAuthProviders.provider, account.provider),
-                    eq(userAuthProviders.providerUserId, account.providerAccountId)
+                    eq(accounts.provider, account.provider),
+                    eq(accounts.providerAccountId, account.providerAccountId)
                 )
             )
             .limit(1);
@@ -48,14 +48,19 @@ export function DrizzleAdapter(): import ('@auth/sveltekit/adapters').Adapter{
         //session adapter functions
 
         async createSession(data) {
+            console.log('[ADAPTER DEBUG] createSession called with:', data);
             const [session] = await db.insert(sessions).values(data).returning();
+            console.log('[ADAPTER DEBUG] session created:', session);
             return session;
         },
 
         async getSessionAndUser(sessionToken) {
+            console.log('[ADAPTER DEBUG] getSessionAndUser called with token:', sessionToken?.substring(0, 20) + '...');
             const [session] = await db.select().from(sessions).where(eq(sessions.sessionToken, sessionToken));
+            console.log('[ADAPTER DEBUG] session found:', !!session);
             if (!session) return null;
             const [user] = await db.select().from(users).where(eq(users.id, session.userId));
+            console.log('[ADAPTER DEBUG] user found:', !!user);
             if (!user) return null;
             return { session, user };
         },
@@ -71,20 +76,55 @@ export function DrizzleAdapter(): import ('@auth/sveltekit/adapters').Adapter{
         },
 
         async linkAccount(data) {
-            await db.insert(userAuthProviders).values({
+            await db.insert(accounts).values({
                 userId: data.userId,
+                type: data.type,
                 provider: data.provider,
-                providerUserId: data.providerAccountId
+                providerAccountId: data.providerAccountId,
+                refresh_token: data.refresh_token,
+                access_token: data.access_token,
+                expires_at: data.expires_at?.toString(),
+                token_type: data.token_type,
+                scope: data.scope,
+                id_token: data.id_token,
+                session_state: data.session_state,
+                password_hash: data.password_hash
             });
         },
 
         async unlinkAccount(data) {
-            await db.delete(userAuthProviders)
-            .where(and(eq(userAuthProviders.provider, data.provider),
-        eq(userAuthProviders.providerUserId, data.providerAccountId)))
+            await db.delete(accounts)
+            .where(and(
+                eq(accounts.provider, data.provider),
+                eq(accounts.providerAccountId, data.providerAccountId)
+            ));
         },
 
-        async createVerificationToken() {return null;},
-        async useVerificationToken() {return null;}
+        async createVerificationToken(data) {
+            const [verificationToken] = await db.insert(verificationTokens).values({
+                identifier: data.identifier,
+                token: data.token,
+                expires: data.expires
+            }).returning();
+            return verificationToken;
+        },
+
+        async useVerificationToken(data) {
+            const [verificationToken] = await db.select().from(verificationTokens)
+                .where(and(
+                    eq(verificationTokens.identifier, data.identifier),
+                    eq(verificationTokens.token, data.token)
+                ));
+            
+            if (!verificationToken) return null;
+            
+            await db.delete(verificationTokens)
+                .where(and(
+                    eq(verificationTokens.identifier, data.identifier),
+                    eq(verificationTokens.token, data.token)
+                ));
+                
+            return verificationToken;
+        }
     }
 }

@@ -1,6 +1,6 @@
 import 'dotenv/config'; // load .env into process.env
 import { db } from './index';
-import { users, userAuthProviders } from './schema';
+import { users, accounts } from './schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
@@ -31,23 +31,24 @@ async function main() {
     console.log(`Created user ${email} with id ${userId}`);
   }
 
-  // Check if auth provider already exists for this user
-  const existingAuth = await db
+  // Check if account already exists for this user
+  const existingAccount = await db
     .select()
-    .from(userAuthProviders)
-    .where(eq(userAuthProviders.userId, userId));
+    .from(accounts)
+    .where(eq(accounts.userId, userId));
 
-  if (existingAuth.length > 0) {
-    console.log(`Auth provider for ${email} already exists, skipping provider insert.`);
+  if (existingAccount.length > 0) {
+    console.log(`Account for ${email} already exists, skipping account insert.`);
   } else {
     const passwordHash = await bcrypt.hash(plainPassword, 10);
-    await db.insert(userAuthProviders).values({
+    await db.insert(accounts).values({
       userId,
-      provider: 'email',
-      providerUserId: email,
-      passwordHash,
+      type: 'credentials',
+      provider: 'credentials',
+      providerAccountId: email,
+      password_hash: passwordHash,
     });
-    console.log(`Created auth provider (email/password) for ${email}`);
+    console.log(`Created account (credentials) for ${email}`);
   }
 
   console.log('Seed complete!');

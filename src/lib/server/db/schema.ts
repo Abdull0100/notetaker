@@ -11,7 +11,26 @@ export const users = pgTable('users', {
 	emailVerified: timestamp('email_verified', {withTimezone: true})
 });
 
-//user auth providers table
+//accounts table - Auth.js standard table for OAuth providers
+//references users table as foreign key
+export const accounts = pgTable('accounts', {
+	userId: uuid('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+	type: text('type').notNull(), // "oauth", "credentials", etc.
+	provider: text('provider').notNull(), // "google", "credentials", etc.
+	providerAccountId: text('providerAccountId').notNull(),
+	refresh_token: text('refresh_token'),
+	access_token: text('access_token'),
+	expires_at: text('expires_at'), // Changed to text to match Auth.js standard
+	token_type: text('token_type'),
+	scope: text('scope'),
+	id_token: text('id_token'),
+	session_state: text('session_state'),
+	password_hash: text('password_hash'), // For credentials provider
+	createdAt: timestamp('created_at').defaultNow(),
+	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date())
+});
+
+//user auth providers table - keeping for credentials/password storage
 //references users table as foreign key
 export const userAuthProviders = pgTable('user_auth_providers', {
 	id: uuid('id').defaultRandom().primaryKey(),
@@ -23,7 +42,7 @@ export const userAuthProviders = pgTable('user_auth_providers', {
 	updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date())
 });
 
-//tracking user sessions
+//tracking user sessions - Auth.js standard format
 //references users table as foreign key
 export const sessions = pgTable('sessions', {
   sessionToken: text('sessionToken').primaryKey(),
@@ -33,6 +52,14 @@ export const sessions = pgTable('sessions', {
   expires: timestamp('expires', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
+});
+
+//verification tokens table - Auth.js standard for email verification
+export const verificationTokens = pgTable('verificationTokens', {
+  identifier: text('identifier').notNull(),
+  token: text('token').notNull(),
+  expires: timestamp('expires', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at').defaultNow()
 });
 
 //meetings table, references users table as foreign key
